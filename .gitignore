@@ -13,3 +13,6 @@
 # 系统
 .DS_Store
 Thumbs.db
+
+# Vercel 本地链接（含 project/org id，不入库）
+.vercel
