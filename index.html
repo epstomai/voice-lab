@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0f1c" />
+  <title>谐波 · 实时嗓音分析</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- 顶栏：产品名 + 操作 -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-name">嗓音实验室</span>
+        <span class="brand-sub">实时谐波 · 共鸣 · 音高</span>
+      </div>
+      <div class="topbar-actions">
+        <button id="record-btn" class="rec-btn" aria-label="录制" title="录制并分析">
+          <span class="rec-ico"></span><span id="rec-label">录制</span>
+        </button>
+        <button id="history-btn" class="icon-btn" aria-label="录音历史" title="录音历史">
+          <svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 12a9 9 0 1 0 3-6.7"></path>
+            <polyline points="3 4 3 9 8 9"></polyline>
+            <polyline points="12 7 12 12 15 14"></polyline>
+          </svg>
+        </button>
+        <button id="settings-btn" class="icon-btn" aria-label="设置" title="设置">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3.2"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="content">
+      <!-- 块 1 · 谐波（H1–H5 柱状图 + 二维特征垫 + 解读） -->
+      <section class="block block-harmonics">
+        <h2 class="block-title">谐波</h2>
+        <div class="viz-wrap"><canvas id="viz"></canvas></div>
+        <div id="pill" class="pill prompt">请对着麦克风发声…</div>
+        <div class="summary" hidden><div id="cards" class="cards"></div></div>
+      </section>
+
+      <!-- 块 2 · 基频轨迹（音高随时间） -->
+      <section class="block block-pitch">
+        <h2 class="block-title">基频轨迹<span id="f0readout" class="f0-readout">— Hz</span></h2>
+        <div class="pitch-wrap"><canvas id="pitch"></canvas></div>
+      </section>
+
+      <!-- 块 3 · 共振峰 · 共鸣（F1/F2 + 共鸣空间图） -->
+      <section class="block block-resonance">
+        <h2 class="block-title">共振峰 · 共鸣</h2>
+        <div class="formants">
+          <div class="formant">
+            <div class="formant-head"><span class="formant-tag">F1</span> 第一共振峰</div>
+            <div class="formant-val"><span id="f1-val">—</span><span class="unit">Hz</span></div>
+            <div class="formant-desc">口腔开合 / 下颌张开 · 越高 = 口越开</div>
+          </div>
+          <div class="formant">
+            <div class="formant-head"><span class="formant-tag">F2</span> 第二共振峰</div>
+            <div class="formant-val"><span id="f2-val">—</span><span class="unit">Hz</span></div>
+            <div class="formant-desc">舌位前后 / 共鸣亮度 · 越高 = 越前越亮（偏女）</div>
+          </div>
+        </div>
+        <div class="resonance-body">
+          <div class="resonance-canvas-wrap"><canvas id="resonance"></canvas></div>
+          <div class="resonance-legend">
+            <p>横轴 <b>F2</b>：越往右，舌位越靠前、共鸣越亮（女性化方向）。</p>
+            <p>纵轴 <b>F1</b>：越往上，口腔开度越大。</p>
+            <p>灰点是<b>典型男声元音</b>位置（i / e / a / o / u）；发同一元音时，女声点整体偏<b>右上</b>。</p>
+            <p>亮点是你当前的共鸣，拖尾是最近 2.5 秒的移动轨迹——<b>看它往哪个方向走</b>：右上 = 女性化，左下 = 男性化。</p>
+            <p class="resonance-note">方向参考，非绝对判定；元音不同点会移动，重点看<b>同一元音下</b>点往哪移。</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 块 4 · 训练指引 -->
+      <section class="block block-guide">
+        <h2 class="block-title">怎么看图 · 找训练方向</h2>
+        <div class="guide-grid">
+          <div class="guide-card">
+            <h3>① 先看懂各个显示</h3>
+            <ul>
+              <li><b>谐波 H1–H5 + 频谱倾斜</b>：谐波结构与音色明暗。倾斜越平缓 = 高频越多 = 越明亮。</li>
+              <li><b>二维特征垫</b>：横轴 左暗→右亮；纵轴 上「已按压」→下「更轻柔(气声)」。看那个点落在哪。</li>
+              <li><b>基频轨迹</b>：音高(F0)随时间。开启目标线把目标音高钉住对照。</li>
+              <li><b>F1 / F2 共振峰</b>：声道共鸣——<b>决定听感性别比音高更关键</b>。整体越高越偏女，越低越偏男。</li>
+            </ul>
+          </div>
+
+          <div class="guide-card fem">
+            <h3>② 女性化方向（MtF）</h3>
+            <ul>
+              <li><b>音高 F0</b>：抬到约 <b>165–220 Hz</b>，先在目标线上稳住。</li>
+              <li><b>共鸣 F1/F2</b>：<b>抬高</b>——舌前移、唇展(微笑)、喉位略上抬、用口腔前部；<b>F2 升高最关键</b>。</li>
+              <li><b>明暗</b>：偏亮（频谱倾斜更平，点往<b>右</b>）。</li>
+              <li><b>气声</b>：略带气声有帮助（H1–H2 略大，点略偏<b>下</b>）。</li>
+            </ul>
+          </div>
+
+          <div class="guide-card masc">
+            <h3>③ 男性化方向（FtM）</h3>
+            <ul>
+              <li><b>音高 F0</b>：降到约 <b>100–135 Hz</b>。</li>
+              <li><b>共鸣 F1/F2</b>：<b>降低</b>——喉位放松下沉、扩大口腔后部空间、声道拉长；<b>F2 降低</b>。</li>
+              <li><b>明暗</b>：偏暗（频谱倾斜更陡，点往<b>左</b>）。</li>
+              <li><b>气声</b>：更结实/压声（H1–H2 小，点偏<b>上</b>）。</li>
+            </ul>
+          </div>
+
+          <div class="guide-card">
+            <h3>④ 怎么找方向、怎么练</h3>
+            <ul>
+              <li>看你的「点」和 F0 / F1 / F2 离上面的目标有多远，朝对应方向调。</li>
+              <li><b>一次只练一个维度</b>：先把音高稳定在目标线，再调共鸣(F2)，最后修明暗/气声。</li>
+              <li>共鸣比音高更影响听感性别——别只盯着 F0，多观察 <b>F2</b> 的升降。</li>
+              <li>数值仅作方向参考，目标因人而异；长期训练建议配合言语治疗师，避免嗓音劳损。</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- 启动遮罩（麦克风需用户手势授权） -->
+  <div id="start-overlay" class="overlay">
+    <div class="overlay-card">
+      <div class="overlay-icon">
+        <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+          <line x1="12" y1="19" x2="12" y2="23"></line>
+          <line x1="8" y1="23" x2="16" y2="23"></line>
+        </svg>
+      </div>
+      <h2>实时嗓音谐波分析</h2>
+      <p>对着麦克风发声，实时观察 H1–H5 谐波结构、气声/压声与音色明暗。</p>
+      <button id="start-btn" class="primary-btn">开始分析</button>
+      <p id="start-error" class="error-text"></p>
+      <p class="hint">需要麦克风权限 · 音频仅在本机处理，不会上传</p>
+    </div>
+  </div>
+
+  <!-- 录音历史 / 分析 -->
+  <div id="report-overlay" class="report-overlay">
+    <div class="report-card">
+      <div class="report-head">
+        <button id="report-back" class="icon-btn dark" aria-label="返回列表" hidden>
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+               stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+        <h2 id="report-title">录音历史</h2>
+        <button id="report-close" class="icon-btn dark" aria-label="关闭">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+               stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- 列表视图 -->
+      <div id="history-view">
+        <div class="history-toolbar">
+          <span id="history-count" class="history-count"></span>
+          <button id="history-clear" class="history-clear" hidden>清空全部</button>
+        </div>
+        <div id="history-list" class="history-list"></div>
+        <p id="history-empty" class="history-empty" hidden>还没有录音。点右上角「● 录制」录一段练声，停止后会自动分析并存入历史。</p>
+      </div>
+
+      <!-- 详情视图 -->
+      <div id="detail-view" hidden>
+        <div id="report-body" class="report-body"></div>
+        <div id="report-audio" class="report-audio"></div>
+        <div class="report-actions">
+          <a id="report-download" class="report-link" download="录音.webm" hidden>下载音频</a>
+          <button id="report-delete" class="report-btn danger">删除这条</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 设置面板 -->
+  <div id="settings-backdrop" class="settings-backdrop"></div>
+  <aside id="settings-panel" class="settings-panel" aria-label="设置">
+    <div class="settings-head">
+      <h2>设置</h2>
+      <button id="settings-close" class="icon-btn dark" aria-label="关闭">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+             stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="setting">
+      <label for="set-smoothing">平滑度 <span id="set-smoothing-val" class="val"></span></label>
+      <input id="set-smoothing" type="range" min="0" max="95" step="1" />
+      <p class="setting-hint">越高越平稳，但对发声变化的响应越慢。</p>
+    </div>
+
+    <div class="setting">
+      <label for="set-gate">静音门限 <span id="set-gate-val" class="val"></span></label>
+      <input id="set-gate" type="range" min="2" max="30" step="1" />
+      <p class="setting-hint">环境嘈杂时调高，避免无声时乱跳。</p>
+    </div>
+
+    <div class="setting two-col">
+      <div>
+        <label for="set-fmin">最低基频 <span id="set-fmin-val" class="val"></span></label>
+        <input id="set-fmin" type="range" min="50" max="160" step="5" />
+      </div>
+      <div>
+        <label for="set-fmax">最高基频 <span id="set-fmax-val" class="val"></span></label>
+        <input id="set-fmax" type="range" min="300" max="800" step="10" />
+      </div>
+    </div>
+
+    <div class="setting row">
+      <label for="set-target">基频轨迹目标线</label>
+      <input id="set-target" type="checkbox" class="switch" />
+    </div>
+
+    <div class="setting">
+      <label for="set-targethz">目标基频 <span id="set-targethz-val" class="val"></span></label>
+      <input id="set-targethz" type="range" min="70" max="350" step="1" />
+      <p class="setting-hint">勾选上方开关后，在基频轨迹上画一条固定的目标频率线。</p>
+    </div>
+
+    <div class="setting row">
+      <label for="set-baseline">显示参考基线</label>
+      <input id="set-baseline" type="checkbox" class="switch" />
+    </div>
+
+    <div class="setting row">
+      <label for="set-freeze">冻结画面</label>
+      <input id="set-freeze" type="checkbox" class="switch" />
+    </div>
+
+    <p class="settings-foot">设置自动保存在本机。</p>
+  </aside>
+
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>

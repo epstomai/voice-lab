@@ -1,0 +1,15 @@
+# 开发日志（Antigravity ag report / log-decision）
+.antigravity/
+
+# 示例录音（真人语音，本地保留、不入库）
+*.wav
+
+# 本地工具 / 编辑器 / 索引
+.claude/
+.codegraph/
+.vscode/
+.idea/
+
+# 系统
+.DS_Store
+Thumbs.db
