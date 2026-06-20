@@ -500,7 +500,8 @@ function analyzeRecording(buf, durMs) {
   const f2v = voiced.filter((x) => x.f2 > 0).map((x) => x.f2);
   s.f1mean = avg(f1v);
   s.f2mean = avg(f2v);
-  if (f2v.length) { s.f2min = Math.min(...f2v); s.f2max = Math.max(...f2v); }
+  if (f1v.length) s.f1median = median(f1v);
+  if (f2v.length) { s.f2median = median(f2v); s.f2min = Math.min(...f2v); s.f2max = Math.max(...f2v); }
   s.tiltMean = avg(voiced.map((x) => x.tilt));
   s.h1h2Mean = avg(voiced.map((x) => x.h1h2));
 
@@ -557,11 +558,23 @@ function reportHTML(s) {
     row('音域跨度', s.semitones.toFixed(1) + ' 半音'),
     row('稳定度（标准差）', '±' + Math.round(s.f0std) + ' Hz'),
   ]);
-  html += section('共振峰（共鸣）', [
-    row('F1 平均', s.f1mean ? Math.round(s.f1mean) + ' Hz' : '—'),
-    row('F2 平均', s.f2mean ? Math.round(s.f2mean) + ' Hz' : '—'),
+  const pair = (m, md) => (m ? Math.round(m) : '—') + ' / ' + (md ? Math.round(md) : '—') + ' Hz';
+  html += section('共振峰（共鸣）· 平均 / 中位', [
+    row('F1', pair(s.f1mean, s.f1median)),
+    row('F2', pair(s.f2mean, s.f2median)),
     row('F2 范围', s.f2max ? Math.round(s.f2min) + ' – ' + Math.round(s.f2max) + ' Hz' : '—'),
   ]);
+
+  // 训练方向：用更稳健的 F1/F2 中位判定当前共鸣属于偏男/中性/偏女，并给双向调整建议
+  if (s.f1median && s.f2median) {
+    const sc = resonanceScore(s.f1median, s.f2median);
+    const where = sc > 0.44 ? '偏女' : sc < 0.38 ? '偏男' : '中性';
+    html += section('训练方向（按 F1/F2 中位）', [
+      row('当前共鸣', `${where}（F1 ${Math.round(s.f1median)} · F2 ${Math.round(s.f2median)} Hz）`),
+      row('更女性化 →', '抬高 F2：舌前移 · 唇展(微笑) · 喉位略上抬'),
+      row('更男性化 →', '降低 F1/F2：喉位放松下沉 · 扩大口腔后部'),
+    ]);
+  }
   html += section('音色', [
     row('明暗（频谱倾斜）', s.tiltMean.toFixed(1) + ' dB/oct · ' + toneWord(s.tiltMean)),
     row('气声（H1−H2）', s.h1h2Mean.toFixed(1) + ' dB · ' + breathWord(s.h1h2Mean)),
